@@ -18,14 +18,31 @@ public class OrderHandler(IOrderService orders, ILogger<OrderHandler> logger) : 
 
 ## Why
 
-| Problem in plain RabbitMQ.Client | Bunny fix |
-|---|---|
-| Channel/consumer plumbing per handler | One attribute pair (`[Exchange]` + `[Topic]`) |
-| Scoped DI doesn't work — root provider only | Per-message `IServiceScope`, handlers registered as `AddScoped` |
-| Sync `IBasicConsumer` + `task.Wait()` deadlocks | Async-first (`IAsyncBasicConsumer`, RabbitMQ.Client v7) |
-| Manual ack everywhere, easy to forget | Return `Ack()` / `Nack()` / `Reject()` (or just `void` = ack-on-success) |
-| Newtonsoft hardcoded | `IBunnySerializer` — STJ default, pluggable |
-| Tied to `WebApplication` | `IHostedService` — works in web apps and worker services |
+The .NET ecosystem has plenty of RabbitMQ libraries — MassTransit, EasyNetQ, Rebus, raw `RabbitMQ.Client`. Each comes with its own mental model: sagas, consumers, message contexts, handlers, pipeline behaviors. Every team picks one and then *reinvents how to organize code around it*.
+
+Bunny is opinionated about exactly that one thing: **organize event handling the same way you organize REST controllers.**
+
+```csharp
+// REST controller — every .NET developer knows this shape
+[Route("orders")]
+public class OrdersController(IOrderService orders) : ControllerBase
+{
+    [HttpPost("{id:guid}/cancel")]
+    public Task Cancel(Guid id, [FromBody] CancelDto dto) => orders.Cancel(id, dto);
+}
+
+// Bunny handler — same shape, AMQP routing key instead of an HTTP route
+[Exchange("orders")]
+public class OrderHandler(IOrderService orders) : Bunny.EventHandler
+{
+    [Topic("order.<id:guid>.cancel")]
+    public Task Cancel(Guid id, CancellationToken ct) => orders.Cancel(id, BodyAs<CancelDto>()!, ct);
+}
+```
+
+If you've ever written an ASP.NET controller, you already know Bunny. **Class = group of related handlers. Method = one handler. Attribute = route. Return value = response.** No new concepts to learn — even a developer who's never touched RabbitMQ can read a handler and understand what it does on the first try.
+
+Trade-off: Bunny doesn't compete on features with MassTransit & co. No built-in sagas, no Outbox pattern, no cross-broker abstraction, no scheduling. It does one thing: attribute-routed AMQP handlers that look like REST controllers. Need more than that and you'll outgrow Bunny.
 
 ## Install
 
