@@ -1,5 +1,14 @@
 name: release
 
+# Triggered by pushing a `v*.*.*` git tag, or manually via "Run workflow".
+#
+# Required repo secrets:
+#   NUGET_API_KEY    - optional; if set, publishes to nuget.org
+#                      (Settings > Secrets and variables > Actions)
+#
+# GitHub Packages publishing uses the auto-provided GITHUB_TOKEN -
+# no extra config needed.
+
 on:
   push:
     tags: ["v*.*.*"]
@@ -16,6 +25,8 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
     steps:
       - uses: actions/checkout@v4
 
@@ -36,8 +47,11 @@ jobs:
       - name: Restore
         run: dotnet restore Bunny.sln
 
+      - name: Build
+        run: dotnet build Bunny.sln --configuration Release --no-restore -p:Version=${{ steps.version.outputs.value }}
+
       - name: Test
-        run: dotnet test Bunny.sln --configuration Release
+        run: dotnet test Bunny.sln --configuration Release --no-build
 
       - name: Pack
         run: |
@@ -55,8 +69,6 @@ jobs:
 
       - name: Push to NuGet.org
         if: env.NUGET_API_KEY != ''
-        env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
           dotnet nuget push ./artifacts/*.nupkg \
             --api-key "$NUGET_API_KEY" \
