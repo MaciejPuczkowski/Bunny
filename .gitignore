@@ -1,0 +1,29 @@
+# Build output
+bin/
+obj/
+out/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Claude Code local state
+.claude/
+CLAUDE.local.md
+
+# Packages
+*.nupkg
+*.snupkg
+
+# Test results
+TestResults/
+coverage.cobertura.xml
+*.coverage
+*.trx
+
+# Misc
+.DS_Store
+Thumbs.db
