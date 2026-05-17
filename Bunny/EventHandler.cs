@@ -18,12 +18,11 @@ namespace Bunny;
 /// [Exchange("orders")]
 /// public class OrderHandler(IOrderService orders, ILogger<OrderHandler> logger) : Bunny.EventHandler
 /// {
-///     [Topic("order.<id:guid>.created")]
-///     public async Task OnCreated(Guid id, CancellationToken ct)
+///     [Topic("order.{id:guid}.created")]
+///     public async Task OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
 ///     {
-///         var dto = BodyAs<OrderCreatedDto>();
 ///         logger.LogInformation("Order {Id} from {RoutingKey}", id, RoutingKey);
-///         await orders.HandleAsync(dto!, ct);
+///         await orders.HandleAsync(dto, ct);
 ///     }
 /// }
 /// ]]></code>

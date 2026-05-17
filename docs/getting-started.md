@@ -103,7 +103,7 @@ using EventHandler = Bunny.EventHandler;
 [Exchange("orders")]
 public class OrderHandler(IOrderService orders, ILogger<OrderHandler> logger) : EventHandler
 {
-    [Topic("order.<id:guid>.created", Queue = "orders.created", Prefetch = 20)]
+    [Topic("order.{id:guid}.created", Queue = "orders.created", Prefetch = 20)]
     public async Task OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
     {
         logger.LogInformation("Got order {Id} via {RoutingKey}", id, RoutingKey);
@@ -117,8 +117,8 @@ public record OrderCreatedDto(string Customer, decimal Total);
 What's happening:
 
 - `[Exchange("orders")]` — declares the topic exchange `orders` at startup (idempotent).
-- `[Topic("order.<id:guid>.created", ...)]` — declares the queue `orders.created`, binds it to the exchange with key `order.*.created`, starts a consumer with prefetch 20.
-- `<id:guid>` — `id` is bound to the `Guid` method parameter automatically.
+- `[Topic("order.{id:guid}.created", ...)]` — declares the queue `orders.created`, binds it to the exchange with key `order.*.created`, starts a consumer with prefetch 20.
+- `{id:guid}` — `id` is bound to the `Guid` method parameter automatically.
 - `[FromBody]` — `dto` is deserialized from the message body before the handler runs (System.Text.Json by default). Same convention as ASP.NET controllers.
 - `OrderHandler` is constructed **once per message** inside its own DI scope, so injecting `DbContext` or other scoped services is safe.
 - The method returns `Task` (no `AckResult`), so Bunny acks the message implicitly on success and nacks (without requeue) on exception.
@@ -164,7 +164,7 @@ The handler's **return type** decides what happens after it finishes:
 Explicit example:
 
 ```csharp
-[Topic("order.<id:guid>.created", RequeueOnError = false)]
+[Topic("order.{id:guid}.created", RequeueOnError = false)]
 public async Task<AckResult> OnCreated(Guid id, CancellationToken ct)
 {
     if (!TryBodyAs<OrderCreatedDto>(out var dto)) return Reject(requeue: false);  // malformed → DLX
@@ -177,7 +177,7 @@ public async Task<AckResult> OnCreated(Guid id, CancellationToken ct)
 If you want to free the prefetch slot **before** finishing (at-most-once, useful for metrics / audit):
 
 ```csharp
-[Topic("metrics.<source:string>.event", Prefetch = 100)]
+[Topic("metrics.{source:string}.event", Prefetch = 100)]
 public async Task OnMetric(string source, CancellationToken ct)
 {
     await AckNowAsync();           // broker frees the slot now
@@ -194,7 +194,7 @@ Bunny logs every binding at `Information` level on startup:
 
 ```
 info: Bunny.Internal.BunnyHostedService[0]
-      Bound OrderHandler.OnCreated -> orders / order.<id:guid>.created (queue: orders.created)
+      Bound OrderHandler.OnCreated -> orders / order.{id:guid}.created (queue: orders.created)
 info: Bunny.Internal.BunnyHostedService[0]
       Bunny started: 1 binding(s) on localhost:5672
 ```

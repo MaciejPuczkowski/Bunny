@@ -12,13 +12,13 @@ A handler can subscribe to as many topics as you like — each `[Topic]` becomes
 [Exchange("orders")]
 public class OrderHandler(IOrderService orders) : EventHandler
 {
-    [Topic("order.<id:guid>.created", Queue = "orders.created")]
+    [Topic("order.{id:guid}.created", Queue = "orders.created")]
     public Task OnCreated(Guid id, CancellationToken ct) => orders.HandleCreated(id, BodyAs<OrderDto>()!, ct);
 
-    [Topic("order.<id:guid>.cancelled", Queue = "orders.cancelled")]
+    [Topic("order.{id:guid}.cancelled", Queue = "orders.cancelled")]
     public Task OnCancelled(Guid id, CancellationToken ct) => orders.HandleCancelled(id, ct);
 
-    [Topic("order.<id:guid>.shipped", Queue = "orders.shipped")]
+    [Topic("order.{id:guid}.shipped", Queue = "orders.shipped")]
     public Task OnShipped(Guid id, CancellationToken ct) => orders.HandleShipped(id, ct);
 }
 ```
@@ -28,7 +28,7 @@ public class OrderHandler(IOrderService orders) : EventHandler
 Supported types: `int`, `long`, `guid`, `string`, `bool`, `double`, `float`. Bind by **parameter name**:
 
 ```csharp
-[Topic("metrics.<source:string>.count.<value:long>")]
+[Topic("metrics.{source:string}.count.{value:long}")]
 public Task OnMetric(string source, long value)
 {
     // source = "web", value = 12345  for routing key "metrics.web.count.12345"
@@ -45,7 +45,7 @@ Two styles, pick whichever fits the handler:
 **1. `[FromBody]` parameter (recommended — matches ASP.NET controllers).** The body is deserialized *before* the handler runs and bound to the parameter by attribute, not by name:
 
 ```csharp
-[Topic("order.<id:guid>.created")]
+[Topic("order.{id:guid}.created")]
 public async Task OnCreated(Guid id, [FromBody] OrderDto dto, CancellationToken ct)
 {
     // dto is already populated when we get here
@@ -75,7 +75,7 @@ The two styles compose freely — one handler can take `[FromBody] OrderDto` whi
 Publish to another exchange (e.g., audit, downstream events):
 
 ```csharp
-[Topic("order.<id:guid>.created")]
+[Topic("order.{id:guid}.created")]
 public async Task OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
 {
     await orders.HandleAsync(dto, ct);
@@ -98,7 +98,7 @@ await PublishAsync("audit", "key", message, props =>
 The most common pattern. The handler decides per-message:
 
 ```csharp
-[Topic("order.<id:guid>.created", RequeueOnError = false)]
+[Topic("order.{id:guid}.created", RequeueOnError = false)]
 public async Task<AckResult> OnCreated(Guid id, [FromBody] OrderDto dto, CancellationToken ct)
 {
     if (await orders.IsDuplicate(id, ct))  return Reject(requeue: false);   // business reject
@@ -125,7 +125,7 @@ When throughput matters more than guaranteed processing — metrics, audit logs,
 [Exchange("metrics")]
 public class MetricsHandler(IMetricStore store) : EventHandler
 {
-    [Topic("metric.<source:string>.event", Prefetch = 100)]
+    [Topic("metric.{source:string}.event", Prefetch = 100)]
     public async Task OnEvent(string source, CancellationToken ct)
     {
         await AckNowAsync();  // free the slot; broker won't redeliver if we crash now
@@ -141,7 +141,7 @@ Trade-off: at-most-once delivery. If the handler crashes after `AckNowAsync` the
 Validate quickly → reject the bad ones → do heavy work on the good ones at leisure:
 
 ```csharp
-[Topic("audit.<type:string>")]
+[Topic("audit.{type:string}")]
 public async Task OnAudit(string type, CancellationToken ct)
 {
     if (!TryBodyAs<AuditDto>(out var dto))
@@ -221,7 +221,7 @@ When declaring queues with management UI or migrations, set `x-dead-letter-excha
 **2. Manual retry counter via headers**
 
 ```csharp
-[Topic("order.<id:guid>.created")]
+[Topic("order.{id:guid}.created")]
 public async Task<AckResult> OnCreated(Guid id, CancellationToken ct)
 {
     var attempts = ReadAttempts(Properties);
@@ -262,7 +262,7 @@ public class OrderHandler(
     IOptions<MyOptions> opts
 ) : EventHandler
 {
-    [Topic("order.<id:guid>.created")]
+    [Topic("order.{id:guid}.created")]
     public async Task OnCreated(Guid id, CancellationToken ct)
     {
         db.Audit.Add(new(id, "received"));

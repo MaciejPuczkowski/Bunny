@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Bunny.Internal;
@@ -53,9 +54,22 @@ internal sealed partial class RoutePattern
 
     private static Regex BuildMatcher(string pattern)
     {
-        var escaped = Regex.Escape(pattern);
-        var body = ParamRegex().Replace(escaped, m => $"(?<{m.Groups[1].Value}>[^.]+)");
+        var body = StitchMatcherBody(pattern);
         return new Regex($"^{body}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    }
+
+    private static string StitchMatcherBody(string pattern)
+    {
+        var sb = new StringBuilder();
+        var cursor = 0;
+        foreach (Match m in ParamRegex().Matches(pattern))
+        {
+            sb.Append(Regex.Escape(pattern[cursor..m.Index]));
+            sb.Append($"(?<{m.Groups[1].Value}>[^.]+)");
+            cursor = m.Index + m.Length;
+        }
+        sb.Append(Regex.Escape(pattern[cursor..]));
+        return sb.ToString();
     }
 
     private static Type ResolveType(string name) => name.ToLowerInvariant() switch
@@ -75,7 +89,7 @@ internal sealed partial class RoutePattern
             ? Guid.Parse(raw)
             : Convert.ChangeType(raw, targetType, System.Globalization.CultureInfo.InvariantCulture)!;
 
-    [GeneratedRegex(@"<(\w+):(\w+)>")]
+    [GeneratedRegex(@"\{(\w+):(\w+)\}")]
     private static partial Regex ParamRegex();
 }
 

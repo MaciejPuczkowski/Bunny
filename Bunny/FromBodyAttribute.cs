@@ -13,7 +13,7 @@ namespace Bunny;
 /// </remarks>
 /// <example>
 /// <code><![CDATA[
-/// [Topic("order.<id:guid>.created")]
+/// [Topic("order.{id:guid}.created")]
 /// public async Task OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
 /// {
 ///     // id from routing key, dto from body, ct from host - no BodyAs<T>() call needed

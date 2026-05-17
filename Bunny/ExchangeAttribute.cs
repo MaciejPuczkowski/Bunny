@@ -12,7 +12,7 @@ namespace Bunny;
 /// [Exchange("orders", ExchangeType.Topic, durable: true)]
 /// public class OrderHandler : EventHandler
 /// {
-///     [Topic("order.<id:guid>.created")]
+///     [Topic("order.{id:guid}.created")]
 ///     public Task OnCreated(Guid id) => ...;
 /// }
 /// ]]></code>

@@ -2,24 +2,22 @@ namespace Bunny;
 
 /// <summary>
 /// Binds a method to a routing pattern on the enclosing exchange. The pattern may contain typed
-/// route parameters in the form <c>&lt;name:type&gt;</c> (supported types: int, long, guid, string,
-/// bool, double, float). The broker binding key replaces each parameter with <c>*</c>; the
-/// dispatcher extracts values from the routing key and binds them to method parameters by name.
+/// route parameters in the form <c>{name:type}</c> (supported types: int, long, guid, string,
+/// bool, double, float) - same shape as ASP.NET HTTP route templates. The broker binding key
+/// replaces each parameter with <c>*</c>; the dispatcher extracts values from the routing key
+/// and binds them to method parameters by name.
 /// </summary>
 /// <example>
 /// <code><![CDATA[
-/// [Topic("order.<id:guid>.created", Queue = "orders.created", Prefetch = 20)]
-/// public async Task<AckResult> OnCreated(Guid id, CancellationToken ct)
-/// {
-///     var dto = BodyAs<OrderCreatedDto>();
-///     return await service.HandleAsync(dto, ct) ? Ack() : Nack(requeue: true);
-/// }
+/// [Topic("order.{id:guid}.created", Queue = "orders.created", Prefetch = 20)]
+/// public async Task<AckResult> OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
+///     => await service.HandleAsync(id, dto, ct) ? Ack() : Nack(requeue: true);
 /// ]]></code>
 /// </example>
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
 public sealed class TopicAttribute(string pattern) : Attribute
 {
-    /// <summary>Routing pattern. Typed parameters use <c>&lt;name:type&gt;</c>.</summary>
+    /// <summary>Routing pattern. Typed parameters use <c>{name:type}</c> (e.g. <c>{id:guid}</c>).</summary>
     public string Pattern { get; } = pattern;
 
     /// <summary>Queue name. Empty (default) declares an exclusive auto-named queue per process.</summary>

@@ -5,14 +5,14 @@ public sealed record OrderDto(string Name, decimal Amount);
 [Exchange("test-orders")]
 public class OrderHandler(HandlerInvocations recorder) : EventHandler
 {
-    [Topic("order.<id:guid>.created")]
+    [Topic("order.{id:guid}.created")]
     public Task OnCreated(Guid id, CancellationToken ct)
     {
         Record(nameof(OnCreated), new Dictionary<string, object?> { ["id"] = id }, BodyAs<OrderDto>(), ct);
         return Task.CompletedTask;
     }
 
-    [Topic("order.<id:guid>.cancelled", RequeueOnError = true)]
+    [Topic("order.{id:guid}.cancelled", RequeueOnError = true)]
     public AckResult OnCancelled(Guid id)
     {
         Record(nameof(OnCancelled), new Dictionary<string, object?> { ["id"] = id }, null, false);
@@ -23,21 +23,21 @@ public class OrderHandler(HandlerInvocations recorder) : EventHandler
     public Task OnFail()
         => throw new InvalidOperationException("boom");
 
-    [Topic("order.<id:guid>.fast")]
+    [Topic("order.{id:guid}.fast")]
     public async Task OnFast(Guid id, CancellationToken ct)
     {
         await AckNowAsync();
         Record(nameof(OnFast), new Dictionary<string, object?> { ["id"] = id }, null, ct);
     }
 
-    [Topic("order.<id:guid>.reject")]
+    [Topic("order.{id:guid}.reject")]
     public async Task OnRejectEarly(Guid id)
     {
         await RejectNowAsync(requeue: false);
         Record(nameof(OnRejectEarly), new Dictionary<string, object?> { ["id"] = id }, null, false);
     }
 
-    [Topic("order.<id:guid>.frombody")]
+    [Topic("order.{id:guid}.frombody")]
     public Task OnFromBody(Guid id, [FromBody] OrderDto dto, CancellationToken ct)
     {
         Record(nameof(OnFromBody), new Dictionary<string, object?> { ["id"] = id }, dto, ct);
@@ -54,7 +54,7 @@ public class OrderHandler(HandlerInvocations recorder) : EventHandler
 [Exchange("test-audit")]
 public class AuditHandler(HandlerInvocations recorder) : EventHandler
 {
-    [Topic("audit.<source:string>.event")]
+    [Topic("audit.{source:string}.event")]
     public Task OnEvent(string source)
     {
         recorder.Calls.Add(new InvocationRecord(

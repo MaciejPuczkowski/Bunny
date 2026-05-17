@@ -6,7 +6,7 @@ Controller-style RabbitMQ consumer/publisher for .NET 10. Route AMQP messages to
 [Exchange("orders")]
 public class OrderHandler(IOrderService orders, ILogger<OrderHandler> logger) : Bunny.EventHandler
 {
-    [Topic("order.<id:guid>.created")]
+    [Topic("order.{id:guid}.created")]
     public async Task<AckResult> OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
     {
         logger.LogInformation("Order {Id} from {RoutingKey}", id, RoutingKey);
@@ -34,7 +34,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
 [Exchange("orders")]
 public class OrderHandler(IOrderService orders) : Bunny.EventHandler
 {
-    [Topic("order.<id:guid>.cancel")]
+    [Topic("order.{id:guid}.cancel")]
     public Task Cancel(Guid id, [FromBody] CancelDto dto, CancellationToken ct) => orders.Cancel(id, dto, ct);
 }
 ```
@@ -87,7 +87,7 @@ using EventHandler = Bunny.EventHandler;  // avoids clash with System.EventHandl
 [Exchange("orders")]
 public class OrderHandler(IOrderService orders) : EventHandler
 {
-    [Topic("order.<id:guid>.created", Queue = "orders.created", Prefetch = 20)]
+    [Topic("order.{id:guid}.created", Queue = "orders.created", Prefetch = 20)]
     public Task OnCreated(Guid id, [FromBody] OrderDto dto, CancellationToken ct) => orders.HandleAsync(id, dto, ct);
 }
 ```
@@ -137,7 +137,7 @@ dotnet test  Bunny.sln
 
 ## Features
 
-- Attribute routing: `[Exchange]` on class, `[Topic("order.<id:guid>.created")]` on methods
+- Attribute routing: `[Exchange]` on class, `[Topic("order.{id:guid}.created")]` on methods
 - Typed route parameter binding: `int`, `long`, `guid`, `string`, `bool`, `double`, `float`
 - Scoped DI per message — `DbContext` & friends just work
 - Async pipeline end-to-end (RabbitMQ.Client v7)

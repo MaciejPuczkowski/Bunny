@@ -9,7 +9,7 @@ namespace Bunny;
 /// </summary>
 /// <example>
 /// <code><![CDATA[
-/// [Topic("order.<id:guid>.created")]
+/// [Topic("order.{id:guid}.created")]
 /// public async Task<AckResult> OnCreated(Guid id, CancellationToken ct)
 /// {
 ///     if (!TryBodyAs<OrderDto>(out var dto)) return Reject(requeue: false);  // malformed
