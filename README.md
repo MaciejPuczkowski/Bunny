@@ -47,8 +47,10 @@ Trade-off: Bunny doesn't compete on features with MassTransit & co. No built-in 
 ## Install
 
 ```bash
-dotnet add package Bunny
+dotnet add package BunnyMQ
 ```
+
+Code still references the `Bunny` namespace (and assembly) — only the NuGet listing name is `BunnyMQ` (the simpler `Bunny` package id is taken on nuget.org by an unrelated project).
 
 Or as a project reference during local development:
 

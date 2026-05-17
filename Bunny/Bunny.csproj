@@ -13,7 +13,7 @@
   </PropertyGroup>
 
   <PropertyGroup Label="NuGet">
-    <PackageId>Bunny</PackageId>
+    <PackageId>BunnyMQ</PackageId>
     <Version>0.1.0</Version>
     <Authors>puczk</Authors>
     <Company>puczk</Company>
