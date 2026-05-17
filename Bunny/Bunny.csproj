@@ -15,8 +15,8 @@
   <PropertyGroup Label="NuGet">
     <PackageId>BunnyMQ</PackageId>
     <Version>0.1.0</Version>
-    <Authors>puczk</Authors>
-    <Company>puczk</Company>
+    <Authors>Maciej Puczkowski</Authors>
+    <Company>Maciej Puczkowski</Company>
     <Description>Controller-style RabbitMQ consumer/publisher for .NET 10. Attribute routing, scoped handlers, async dispatch, return-value ack.</Description>
     <PackageTags>rabbitmq;messaging;eventbus;router;amqp;controller</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -24,7 +24,7 @@
     <PackageProjectUrl>https://github.com/MaciejPuczkowski/Bunny</PackageProjectUrl>
     <RepositoryUrl>https://github.com/MaciejPuczkowski/Bunny</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <Copyright>Copyright (c) puczk</Copyright>
+    <Copyright>Copyright (c) Maciej Puczkowski</Copyright>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
