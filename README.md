@@ -152,4 +152,4 @@ dotnet test  Bunny.sln
 
 ## License
 
-TBD.
+MIT — see [LICENSE](LICENSE).
