@@ -137,9 +137,25 @@ public async Task OnAudit(string type, CancellationToken ct)
 }
 ```
 
-## Per-topic prefetch
+## Per-topic prefetch and the channel/connection model
 
-Bunny opens **one channel per binding**, so prefetch is per topic:
+In AMQP a **connection** is a TCP socket to the broker (expensive — TCP + AMQP handshake + auth) and a **channel** is a lightweight virtual connection multiplexed over it (cheap, sub-millisecond to open). RabbitMQ allows ~2047 channels per connection by default; opening many channels on a single connection is the norm.
+
+Bunny matches that model:
+
+- **One `IConnection`** per process — opened by the hosted service on startup, reused for everything.
+- **One `IChannel` dedicated to publishing** — shared by `IBunnyPublisher`, guarded by a semaphore so concurrent publishes are serialized.
+- **One `IChannel` per `[Topic]` binding** — each consumer gets its own channel with its own `BasicQos` setting.
+
+So a service with 5 handler classes × 3 topics each runs `1` connection + `1` publish channel + `15` consumer channels = **16 channels on 1 TCP socket**.
+
+Why per-binding channels (rather than sharing one channel across topics):
+
+- **Prefetch is per-channel.** `BasicQos(prefetchCount: 20)` means "20 unacked messages on this channel". A shared channel would mean one slow topic eats the whole budget and starves the rest.
+- **Fault isolation.** If the broker closes a channel (rejected publish, protocol error), only that binding stalls — the others keep running.
+- **Natural per-topic concurrency.** A channel processes its `ReceivedAsync` callbacks serially (one message at a time per channel, even with async handlers). Separate channels = separate event loops = topics run in parallel.
+
+Practical knob: set `Prefetch` per topic based on the cost of the handler.
 
 ```csharp
 [Topic("orders.bulk-import", Prefetch = 1)]    // serialize — heavy
@@ -148,6 +164,8 @@ public Task BulkImport() => ...;
 [Topic("orders.ping", Prefetch = 200)]         // fan out — cheap
 public Task Ping() => ...;
 ```
+
+You don't need to worry about channel count for any realistic workload — connections are the limited resource (one per process), channels effectively are not.
 
 ## Custom serializer
 
