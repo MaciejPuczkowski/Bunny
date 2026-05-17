@@ -148,7 +148,7 @@ dotnet test  Bunny.sln
 
 ## Status
 
-`0.1.0` — alpha. Public API may change. No DLX / dead-letter helpers yet (configure on the queue directly). No retry policies. No publisher channel pool (single shared channel + semaphore).
+Alpha. Public API may change. No DLX / dead-letter helpers yet (configure on the queue directly). No retry policies. No publisher channel pool (single shared channel + semaphore).
 
 ## License
 
