@@ -7,11 +7,10 @@ Controller-style RabbitMQ consumer/publisher for .NET 10. Route AMQP messages to
 public class OrderHandler(IOrderService orders, ILogger<OrderHandler> logger) : Bunny.EventHandler
 {
     [Topic("order.<id:guid>.created")]
-    public async Task<AckResult> OnCreated(Guid id, CancellationToken ct)
+    public async Task<AckResult> OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
     {
-        var dto = BodyAs<OrderCreatedDto>();
         logger.LogInformation("Order {Id} from {RoutingKey}", id, RoutingKey);
-        return await orders.TryHandle(dto!, ct) ? Ack() : Nack(requeue: true);
+        return await orders.TryHandle(dto, ct) ? Ack() : Nack(requeue: true);
     }
 }
 ```
@@ -36,7 +35,7 @@ public class OrdersController(IOrderService orders) : ControllerBase
 public class OrderHandler(IOrderService orders) : Bunny.EventHandler
 {
     [Topic("order.<id:guid>.cancel")]
-    public Task Cancel(Guid id, CancellationToken ct) => orders.Cancel(id, BodyAs<CancelDto>()!, ct);
+    public Task Cancel(Guid id, [FromBody] CancelDto dto, CancellationToken ct) => orders.Cancel(id, dto, ct);
 }
 ```
 
@@ -89,7 +88,7 @@ using EventHandler = Bunny.EventHandler;  // avoids clash with System.EventHandl
 public class OrderHandler(IOrderService orders) : EventHandler
 {
     [Topic("order.<id:guid>.created", Queue = "orders.created", Prefetch = 20)]
-    public Task OnCreated(Guid id, CancellationToken ct) => orders.HandleAsync(id, BodyAs<OrderDto>()!, ct);
+    public Task OnCreated(Guid id, [FromBody] OrderDto dto, CancellationToken ct) => orders.HandleAsync(id, dto, ct);
 }
 ```
 

@@ -126,6 +126,36 @@ public class HandlerDispatcherTests
     }
 
     [Fact]
+    public async Task FromBody_parameter_receives_deserialized_body()
+    {
+        var channel = Substitute.For<IChannel>();
+        var dispatcher = BuildDispatcher(nameof(OrderHandler.OnFromBody));
+        var id = Guid.NewGuid();
+        var ea = MakeEvent($"order.{id}.frombody", _serializer.Serialize(new OrderDto("widget", 42m)));
+
+        await dispatcher.DispatchAsync(channel, ea, CancellationToken.None);
+
+        await channel.Received(1).BasicAckAsync(ea.DeliveryTag, multiple: false, Arg.Any<CancellationToken>());
+        _recorder.Calls.Should().ContainSingle();
+        _recorder.Calls[0].Method.Should().Be(nameof(OrderHandler.OnFromBody));
+        _recorder.Calls[0].RouteParameters["id"].Should().Be(id);
+        _recorder.Calls[0].Body.Should().Be(new OrderDto("widget", 42m));
+    }
+
+    [Fact]
+    public async Task FromBody_with_malformed_body_nacks_via_exception_path()
+    {
+        var channel = Substitute.For<IChannel>();
+        var dispatcher = BuildDispatcher(nameof(OrderHandler.OnFromBody));
+        var ea = MakeEvent($"order.{Guid.NewGuid()}.frombody", Encoding.UTF8.GetBytes("not-json"));
+
+        await dispatcher.DispatchAsync(channel, ea, CancellationToken.None);
+
+        await channel.Received(1).BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: false, Arg.Any<CancellationToken>());
+        _recorder.Calls.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Each_dispatch_resolves_handler_in_its_own_scope()
     {
         var channel = Substitute.For<IChannel>();

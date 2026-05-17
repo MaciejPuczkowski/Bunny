@@ -104,11 +104,10 @@ using EventHandler = Bunny.EventHandler;
 public class OrderHandler(IOrderService orders, ILogger<OrderHandler> logger) : EventHandler
 {
     [Topic("order.<id:guid>.created", Queue = "orders.created", Prefetch = 20)]
-    public async Task OnCreated(Guid id, CancellationToken ct)
+    public async Task OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
     {
-        var dto = BodyAs<OrderCreatedDto>();
         logger.LogInformation("Got order {Id} via {RoutingKey}", id, RoutingKey);
-        await orders.HandleAsync(dto!, ct);
+        await orders.HandleAsync(dto, ct);
     }
 }
 
@@ -120,6 +119,7 @@ What's happening:
 - `[Exchange("orders")]` — declares the topic exchange `orders` at startup (idempotent).
 - `[Topic("order.<id:guid>.created", ...)]` — declares the queue `orders.created`, binds it to the exchange with key `order.*.created`, starts a consumer with prefetch 20.
 - `<id:guid>` — `id` is bound to the `Guid` method parameter automatically.
+- `[FromBody]` — `dto` is deserialized from the message body before the handler runs (System.Text.Json by default). Same convention as ASP.NET controllers.
 - `OrderHandler` is constructed **once per message** inside its own DI scope, so injecting `DbContext` or other scoped services is safe.
 - The method returns `Task` (no `AckResult`), so Bunny acks the message implicitly on success and nacks (without requeue) on exception.
 

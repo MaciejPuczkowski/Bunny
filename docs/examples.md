@@ -40,7 +40,22 @@ A routing key segment that fails to convert to the declared type behaves as a ro
 
 ## Reading the body
 
-Inside a handler, the body is available three ways:
+Two styles, pick whichever fits the handler:
+
+**1. `[FromBody]` parameter (recommended — matches ASP.NET controllers).** The body is deserialized *before* the handler runs and bound to the parameter by attribute, not by name:
+
+```csharp
+[Topic("order.<id:guid>.created")]
+public async Task OnCreated(Guid id, [FromBody] OrderDto dto, CancellationToken ct)
+{
+    // dto is already populated when we get here
+    await orders.HandleAsync(id, dto, ct);
+}
+```
+
+If deserialization fails (malformed payload), the handler is never called — the dispatcher treats it as an exception and applies the topic's `RequeueOnError` policy (default: nack-without-requeue).
+
+**2. Pull from the base class** when you want fine-grained control or graceful malformed handling:
 
 ```csharp
 [Topic("...")]
@@ -49,9 +64,11 @@ public async Task Handle()
     ReadOnlyMemory<byte> raw = Body;             // raw bytes
     string text = BodyAsString();                // UTF-8 string
     OrderDto? dto = BodyAs<OrderDto>();          // deserialized (throws on malformed)
-    if (TryBodyAs<OrderDto>(out var safe)) ...;  // deserialized, false on malformed
+    if (TryBodyAs<OrderDto>(out var safe)) ...;  // deserialized, false on malformed - no throw
 }
 ```
+
+The two styles compose freely — one handler can take `[FromBody] OrderDto` while another in the same class uses `TryBodyAs<T>` to handle poison messages explicitly.
 
 ## Publishing from inside a handler
 
@@ -59,9 +76,8 @@ Publish to another exchange (e.g., audit, downstream events):
 
 ```csharp
 [Topic("order.<id:guid>.created")]
-public async Task OnCreated(Guid id, CancellationToken ct)
+public async Task OnCreated(Guid id, [FromBody] OrderCreatedDto dto, CancellationToken ct)
 {
-    var dto = BodyAs<OrderCreatedDto>()!;
     await orders.HandleAsync(dto, ct);
     await PublishAsync("audit", $"order.audit.{id}", new AuditEntry(id, "created"), ct);
 }
@@ -83,13 +99,14 @@ The most common pattern. The handler decides per-message:
 
 ```csharp
 [Topic("order.<id:guid>.created", RequeueOnError = false)]
-public async Task<AckResult> OnCreated(Guid id, CancellationToken ct)
+public async Task<AckResult> OnCreated(Guid id, [FromBody] OrderDto dto, CancellationToken ct)
 {
-    if (!TryBodyAs<OrderDto>(out var dto)) return Reject(requeue: false);   // malformed → DLX (or discard)
     if (await orders.IsDuplicate(id, ct))  return Reject(requeue: false);   // business reject
-    return await orders.TryHandle(dto!, ct) ? Ack() : Nack(requeue: true);  // transient → retry
+    return await orders.TryHandle(dto, ct) ? Ack() : Nack(requeue: true);   // transient → retry
 }
 ```
+
+(Use `TryBodyAs<T>` from the base class if you want to handle malformed bodies yourself with `Reject(requeue: false)` instead of letting the dispatcher's exception path do it.)
 
 When to use which:
 

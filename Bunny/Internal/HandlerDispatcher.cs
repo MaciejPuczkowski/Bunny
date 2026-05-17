@@ -103,8 +103,18 @@ internal sealed class HandlerDispatcher(
     {
         if (param.ParameterType == typeof(CancellationToken)) return context.CancellationToken;
         if (param.ParameterType == typeof(BunnyContext)) return context;
+        if (param.GetCustomAttribute<FromBodyAttribute>() is not null) return BindBody(param, context);
         return BindRouteValue(param, context);
     }
+
+    private static object? BindBody(ParameterInfo param, BunnyContext context)
+        => BodyAsMethod(param.ParameterType).Invoke(context, null);
+
+    private static MethodInfo BodyAsMethod(Type targetType)
+        => _bodyAsOpen.MakeGenericMethod(targetType);
+
+    private static readonly MethodInfo _bodyAsOpen = typeof(BunnyContext)
+        .GetMethod(nameof(BunnyContext.BodyAs), BindingFlags.Instance | BindingFlags.Public)!;
 
     private static object? BindRouteValue(ParameterInfo param, BunnyContext context)
     {

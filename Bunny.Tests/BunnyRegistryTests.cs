@@ -37,7 +37,7 @@ public class BunnyRegistryTests
         var registry = new BunnyRegistry();
         registry.Scan(typeof(OrderHandler).Assembly);
         var orderBindings = registry.Bindings.Where(b => b.HandlerType == typeof(OrderHandler)).ToList();
-        orderBindings.Should().HaveCount(5);
+        orderBindings.Should().HaveCount(6);
     }
 
     [Fact]

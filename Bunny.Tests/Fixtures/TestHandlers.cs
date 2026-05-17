@@ -37,6 +37,13 @@ public class OrderHandler(HandlerInvocations recorder) : EventHandler
         Record(nameof(OnRejectEarly), new Dictionary<string, object?> { ["id"] = id }, null, false);
     }
 
+    [Topic("order.<id:guid>.frombody")]
+    public Task OnFromBody(Guid id, [FromBody] OrderDto dto, CancellationToken ct)
+    {
+        Record(nameof(OnFromBody), new Dictionary<string, object?> { ["id"] = id }, dto, ct);
+        return Task.CompletedTask;
+    }
+
     private void Record(string method, IReadOnlyDictionary<string, object?> routeParams, object? body, CancellationToken ct)
         => recorder.Calls.Add(new InvocationRecord(method, RoutingKey, routeParams, body, ct.CanBeCanceled));
 
